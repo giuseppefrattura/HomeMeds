@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,11 +40,14 @@ const formSchema = z.object({
 });
 
 type MedicationFormProps = {
-  onAdd: (data: Omit<Medication, "id">) => void;
+  onAdd: (data: Omit<Medication, "id">) => Promise<boolean | void>;
 };
 
 export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
   const [open, setOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,10 +56,15 @@ export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    onAdd(values);
-    form.reset();
-    setOpen(false);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      setIsSubmitting(true);
+      await onAdd(values);
+      form.reset();
+      setOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -70,7 +78,7 @@ export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
         <DialogHeader>
           <DialogTitle>Add New Medication</DialogTitle>
           <DialogDescription>
-            Enter the details of your new medication.
+            Enter the details of your medication to save it to the database.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -95,7 +103,7 @@ export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
                 <FormItem>
                   <FormLabel>Quantity</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 50" {...field} />
+                    <Input type="number" min={1} placeholder="e.g., 50" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -107,7 +115,7 @@ export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Expiration Date</FormLabel>
-                  <Popover>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -130,9 +138,10 @@ export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                        initialFocus
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          setCalendarOpen(false);
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -141,7 +150,10 @@ export function AddMedicationDialog({ onAdd }: MedicationFormProps) {
               )}
             />
             <DialogFooter>
-              <Button type="submit">Add Medication</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? "Saving..." : "Add Medication"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

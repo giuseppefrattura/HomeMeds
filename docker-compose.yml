@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homemeds-app
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3040}
+      POSTGRES_HOST: ${POSTGRES_HOST:-truenas.giuseppefrattura.it}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE:-homemeds}
+      POSTGRES_USER: ${POSTGRES_USER:-homemeds_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-homemeds_password}
+    ports:
+      - "3040:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/_health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
